@@ -1,0 +1,8 @@
+# mvn
+target/
+pom.xml.bak
+pom.xml.versionsBackup
+
+# intellij
+.idea/
+*.iml
