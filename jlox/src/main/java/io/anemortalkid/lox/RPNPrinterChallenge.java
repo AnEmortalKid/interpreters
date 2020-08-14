@@ -7,6 +7,11 @@ public class RPNPrinterChallenge implements Expr.Visitor<String> {
   }
 
   @Override
+  public String visitAssignExpr(Expr.Assign expr) {
+    return null;
+  }
+
+  @Override
   public String visitBinaryExpr(Expr.Binary expr) {
     return expr.left.accept(this) + " " + expr.right.accept(this) + " " + expr.operator.lexeme;
   }
@@ -25,6 +30,12 @@ public class RPNPrinterChallenge implements Expr.Visitor<String> {
   @Override
   public String visitUnaryExpr(Expr.Unary expr) {
     return expr.right.accept(this) + " " + expr.operator.lexeme;
+  }
+
+  @Override
+  public String visitVariableExpr(Expr.Variable expr) {
+    // no need
+    return null;
   }
 
   public static void main(String[] args) {

@@ -9,14 +9,21 @@ import java.util.List;
  * EBNF:
  *
  * <pre>
- * program   → statement* EOF ;
+ * program   → declaration* EOF ;
+ *
+ * declaration → varDecl
+ *             | statement ;
+ *
+ * varDecl → "var" IDENTIFIER ( "=" expression )? ";" ;
  *
  * statement → exprStmt
  * | printStmt ;
  *
  * exprStmt  → expression ";" ;
  * printStmt → "print" expression ";" ;
- * expression     → equality ;
+ * expression → assignment ;
+ * assignment → IDENTIFIER "=" assignment
+ * | equality ;
  * equality       → comparison ( ( "!=" | "==" ) comparison )* ;
  * comparison     → addition ( ( ">" | ">=" | "<" | "<=" ) addition )* ;
  * addition       → multiplication ( ( "-" | "+" ) multiplication )* ;
@@ -24,7 +31,8 @@ import java.util.List;
  * unary          → ( "!" | "-" ) unary
  *                  | primary ;
  * primary        → NUMBER | STRING | "false" | "true" | "nil"
- *                  | "(" expression ")" ;
+ *                  | "(" expression ")"
+ *                  | IDENTIFIER ;
  * </pre>
  */
 class Parser {
@@ -49,10 +57,33 @@ class Parser {
   List<Stmt> parse() {
     List<Stmt> statements = new ArrayList<>();
     while (!isAtEnd()) {
-      statements.add(statement());
+      statements.add(declaration());
     }
 
     return statements;
+  }
+
+  private Stmt declaration() {
+    try {
+      if (match(VAR)) return varDeclaration();
+
+      return statement();
+    } catch (ParseError error) {
+      synchronize();
+      return null;
+    }
+  }
+
+  private Stmt varDeclaration() {
+    Token name = consume(IDENTIFIER, "Expect variable name.");
+
+    Expr initializer = null;
+    if (match(EQUAL)) {
+      initializer = expression();
+    }
+
+    consume(SEMICOLON, "Expect ';' after variable declaration.");
+    return new Stmt.Var(name, initializer);
   }
 
   /**
@@ -88,9 +119,42 @@ class Parser {
     return new Stmt.Expression(expr);
   }
 
-  /** <code>expression     → equality ;</code> */
+  /**
+   * <code>
+   * expression → assignment ;
+   * </code>
+   */
   private Expr expression() {
-    return equality();
+    return assignment();
+  }
+
+  /**
+   *
+   *
+   * <pre>
+   *  assignment → IDENTIFIER "=" assignment
+   *              | equality ;
+   *
+   * </pre>
+   *
+   * @return
+   */
+  private Expr assignment() {
+    Expr expr = equality();
+
+    if (match(EQUAL)) {
+      Token equals = previous();
+      Expr value = assignment();
+
+      if (expr instanceof Expr.Variable) {
+        Token name = ((Expr.Variable) expr).name;
+        return new Expr.Assign(name, value);
+      }
+
+      error(equals, "Invalid assignment target.");
+    }
+
+    return expr;
   }
 
   /** <code>equality       → comparison ( ( "!=" | "==" ) comparison )* ;</code> */
@@ -184,6 +248,10 @@ class Parser {
       Expr expr = expression();
       consume(RIGHT_PAREN, "Expect ')' after expression.");
       return new Expr.Grouping(expr);
+    }
+
+    if (match(IDENTIFIER)) {
+      return new Expr.Variable(previous());
     }
 
     throw error(peek(), "Expect expression.");
