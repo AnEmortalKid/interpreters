@@ -1,6 +1,5 @@
 package io.anemortalkid.lox;
 
-
 public class RPNPrinterChallenge implements Expr.Visitor<String> {
 
   String print(Expr expr) {

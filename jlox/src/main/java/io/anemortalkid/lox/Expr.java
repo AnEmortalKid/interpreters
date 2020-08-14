@@ -1,6 +1,6 @@
 package io.anemortalkid.lox;
 
-public abstract class Expr {
+abstract class Expr {
   public interface Visitor<R> {
     R visitBinaryExpr(Binary expr);
 
