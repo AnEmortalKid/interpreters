@@ -6,13 +6,18 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * EBNF:
+ * Tokens -> Syntax Tree
+ *
+ * <p>EBNF:
  *
  * <pre>
  * program   → declaration* EOF ;
  *
  * declaration → varDecl
- *             | statement ;
+ *             | statement
+ *             | block ;
+ *
+ * block     → "{" declaration* "}" ;
  *
  * varDecl → "var" IDENTIFIER ( "=" expression )? ";" ;
  *
@@ -65,7 +70,9 @@ class Parser {
 
   private Stmt declaration() {
     try {
-      if (match(VAR)) return varDeclaration();
+      if (match(VAR)) {
+        return varDeclaration();
+      }
 
       return statement();
     } catch (ParseError error) {
@@ -95,9 +102,26 @@ class Parser {
    * </pre>
    */
   private Stmt statement() {
-    if (match(PRINT)) return printStatement();
+    if (match(PRINT)) {
+      return printStatement();
+    }
+
+    if (match(LEFT_BRACE)) {
+      return new Stmt.Block(block());
+    }
 
     return expressionStatement();
+  }
+
+  private List<Stmt> block() {
+    List<Stmt> statements = new ArrayList<>();
+
+    while (!check(RIGHT_BRACE) && !isAtEnd()) {
+      statements.add(declaration());
+    }
+
+    consume(RIGHT_BRACE, "Expect '}' after block.");
+    return statements;
   }
 
   /**
