@@ -3,6 +3,7 @@ package io.anemortalkid.lox;
 import static io.anemortalkid.lox.TokenType.*;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -46,6 +47,8 @@ import java.util.List;
  * </pre>
  */
 class Parser {
+
+  private int loopDepth;
 
   private static class ParseError extends RuntimeException {}
 
@@ -111,6 +114,18 @@ class Parser {
       return ifStatement();
     }
 
+    if (match(BREAK)) {
+      return breakStatement();
+    }
+
+    if (match(FOR)) {
+      return forStatement();
+    }
+
+    if (match(WHILE)) {
+      return whileStatement();
+    }
+
     if (match(PRINT)) {
       return printStatement();
     }
@@ -122,10 +137,72 @@ class Parser {
     return expressionStatement();
   }
 
+  private Stmt breakStatement() {
+    if (loopDepth == 0) {
+      error(previous(), "Must be inside a loop to use 'break'");
+    }
+
+    consume(SEMICOLON, "Expect ';' after break.");
+    return new Stmt.Break();
+  }
+
+  private Stmt forStatement() {
+    try {
+      loopDepth++;
+      consume(LEFT_PAREN, "Expect '(' after 'if'.");
+      // initializer
+      Stmt initializer;
+      // none
+      if (match(SEMICOLON)) {
+        initializer = null;
+      } else if (match(VAR)) {
+        initializer = varDeclaration();
+      } else {
+        initializer = expressionStatement();
+      }
+
+      Expr condition = null;
+      // check clause omitted
+      if (!check(SEMICOLON)) {
+        condition = expression();
+      }
+      consume(SEMICOLON, "Expect ';' after loop condition.");
+
+      Expr increment = null;
+      // check omitted
+      if (!check(RIGHT_PAREN)) {
+        increment = expression();
+      }
+      consume(RIGHT_PAREN, "Expect ')' after for clauses.");
+
+      Stmt body = statement();
+
+      // desugar increment
+      if (increment != null) {
+        body = new Stmt.Block(Arrays.asList(body, new Stmt.Expression(increment)));
+      }
+
+      // build while loop
+      if (condition == null) {
+        condition = new Expr.Literal(true);
+      }
+      body = new Stmt.While(condition, body);
+
+      // then add initializer at the top
+      if (initializer != null) {
+        body = new Stmt.Block(Arrays.asList(initializer, body));
+      }
+
+      return body;
+    } finally {
+      loopDepth--;
+    }
+  }
+
   private Stmt ifStatement() {
     consume(LEFT_PAREN, "Expect '(' after 'if'.");
     Expr condition = expression();
-    consume(RIGHT_PAREN, "Expect ')' after if condition.");
+    consume(RIGHT_PAREN, "Expect ')' after condition.");
 
     Stmt thenBranch = statement();
     Stmt elseBranch = null;
@@ -134,6 +211,21 @@ class Parser {
     }
 
     return new Stmt.If(condition, thenBranch, elseBranch);
+  }
+
+  private Stmt whileStatement() {
+    try {
+      loopDepth++;
+      consume(LEFT_PAREN, "Expect '(' after 'while'.");
+      Expr condition = expression();
+      consume(RIGHT_PAREN, "Expect ')' after condition.");
+
+      Stmt body = statement();
+
+      return new Stmt.While(condition, body);
+    } finally {
+      loopDepth--;
+    }
   }
 
   private List<Stmt> block() {

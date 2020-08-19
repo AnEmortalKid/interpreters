@@ -5,6 +5,8 @@ import java.util.List;
 /** Syntax Tree -> WOW */
 public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
+  private static class BreakException extends RuntimeException {}
+
   private Environment environment = new Environment();
 
   void interpret(List<Stmt> statements) {
@@ -141,6 +143,11 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
   }
 
   @Override
+  public Void visitBreakStmt(Stmt.Break stmt) {
+    throw new BreakException();
+  }
+
+  @Override
   public Void visitIfStmt(Stmt.If stmt) {
     if (isTruthy(evaluate(stmt.condition))) {
       execute(stmt.thenBranch);
@@ -239,5 +246,16 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     } finally {
       this.environment = previous;
     }
+  }
+
+  public Void visitWhileStmt(Stmt.While stmt) {
+    try {
+      while (isTruthy(evaluate(stmt.condition))) {
+        execute(stmt.body);
+      }
+    } catch (BreakException ex) {
+      // Do nothing.
+    }
+    return null;
   }
 }
