@@ -39,8 +39,11 @@ import java.util.List;
  * comparison     → addition ( ( ">" | ">=" | "<" | "<=" ) addition )* ;
  * addition       → multiplication ( ( "-" | "+" ) multiplication )* ;
  * multiplication → unary ( ( "/" | "*" ) unary )* ;
- * unary          → ( "!" | "-" ) unary
- *                  | primary ;
+ * unary           → ( "!" | "-" ) unary
+ *                  | call ;
+ * call            → primary ( "(" arguments? ")" )* ;
+ *
+ * arguments → expression ( "," expression )* ;
  * primary        → NUMBER | STRING | "false" | "true" | "nil"
  *                  | "(" expression ")"
  *                  | IDENTIFIER ;
@@ -54,6 +57,8 @@ class Parser {
 
   private final List<Token> tokens;
   private int current = 0;
+
+  private int lambdaId = 0;
 
   Parser(List<Token> tokens) {
     this.tokens = tokens;
@@ -76,10 +81,21 @@ class Parser {
     return statements;
   }
 
+  /**
+   *
+   *
+   * <pre>
+   *     declaration -> funDecl | varDecl | statement
+   * </pre>
+   */
   private Stmt declaration() {
     try {
       if (match(VAR)) {
         return varDeclaration();
+      }
+      if (check(FUN) && checkNext(IDENTIFIER)) {
+        consume(FUN, null);
+        return function("function");
       }
 
       return statement();
@@ -87,6 +103,30 @@ class Parser {
       synchronize();
       return null;
     }
+  }
+
+  private Stmt.Function function(String kind) {
+    Token name = consume(IDENTIFIER, "Expect " + kind + " name.");
+    return new Stmt.Function(name, functionBody(kind));
+  }
+
+  private Expr.Function functionBody(String kind) {
+    consume(LEFT_PAREN, "Expect '(' after " + kind + " name.");
+    List<Token> parameters = new ArrayList<>();
+    if (!check(RIGHT_PAREN)) {
+      do {
+        if (parameters.size() >= 255) {
+          error(peek(), "Cannot have more than 255 parameters.");
+        }
+
+        parameters.add(consume(IDENTIFIER, "Expect parameter name."));
+      } while (match(COMMA));
+    }
+    consume(RIGHT_PAREN, "Expect ')' after parameters.");
+
+    consume(LEFT_BRACE, "Expect '{' before " + kind + " body.");
+    List<Stmt> body = block();
+    return new Expr.Function(parameters, body);
   }
 
   private Stmt varDeclaration() {
@@ -130,11 +170,26 @@ class Parser {
       return printStatement();
     }
 
+    if (match(RETURN)) {
+      return returnStatement();
+    }
+
     if (match(LEFT_BRACE)) {
       return new Stmt.Block(block());
     }
 
     return expressionStatement();
+  }
+
+  private Stmt returnStatement() {
+    Token keyword = previous();
+    Expr value = null;
+    if (!check(SEMICOLON)) {
+      value = expression();
+    }
+
+    consume(SEMICOLON, "Expect ';' after return value.");
+    return new Stmt.Return(keyword, value);
   }
 
   private Stmt breakStatement() {
@@ -376,8 +431,8 @@ class Parser {
    *
    *
    * <pre>
-   * unary          → ( "!" | "-" ) unary
-   *                  | primary ;
+   * unary           → ( "!" | "-" ) unary
+   *                  | call ;
    * </pre>
    */
   private Expr unary() {
@@ -387,7 +442,46 @@ class Parser {
       return new Expr.Unary(operator, right);
     }
 
-    return primary();
+    return call();
+  }
+
+  /**
+   *
+   *
+   * <pre>
+   * call            → primary ( "(" arguments? ")" )* ;
+   *
+   * arguments → expression ( "," expression )* ;
+   * </pre>
+   */
+  private Expr call() {
+    Expr expr = primary();
+
+    while (true) {
+      if (match(LEFT_PAREN)) {
+        expr = finishCall(expr);
+      } else {
+        break;
+      }
+    }
+
+    return expr;
+  }
+
+  private Expr finishCall(Expr callee) {
+    List<Expr> arguments = new ArrayList<>();
+    if (!check(RIGHT_PAREN)) {
+      do {
+        if (arguments.size() >= 255) {
+          error(peek(), "Cannot have more than 255 arguments.");
+        }
+        arguments.add(expression());
+      } while (match(COMMA));
+    }
+
+    Token paren = consume(RIGHT_PAREN, "Expect ')' after arguments.");
+
+    return new Expr.Call(callee, paren, arguments);
   }
 
   /**
@@ -416,6 +510,8 @@ class Parser {
     if (match(IDENTIFIER)) {
       return new Expr.Variable(previous());
     }
+
+    if (match(FUN)) return functionBody("function");
 
     throw error(peek(), "Expect expression.");
   }
@@ -467,6 +563,12 @@ class Parser {
   private boolean check(TokenType type) {
     if (isAtEnd()) return false;
     return peek().type == type;
+  }
+
+  private boolean checkNext(TokenType tokenType) {
+    if (isAtEnd()) return false;
+    if (tokens.get(current + 1).type == EOF) return false;
+    return tokens.get(current + 1).type == tokenType;
   }
 
   private Token advance() {
