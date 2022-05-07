@@ -31,6 +31,8 @@ public class GenerateAst {
         "Stmt",
         Arrays.asList(
             "Block      : List<Stmt> statements",
+            "Class      : Token name, List<Stmt.Function> methods",
+            "Get        : Expr object, Token name",
             "Break     : ",
             "Expression : Expr expression",
             "Function   : Token name, Expr.Function function",

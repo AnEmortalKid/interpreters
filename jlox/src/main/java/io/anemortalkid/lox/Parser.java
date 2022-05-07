@@ -9,45 +9,6 @@ import java.util.List;
 /**
  * Tokens -> Syntax Tree
  *
- * <p>EBNF:
- *
- * <pre>
- * program   → declaration* EOF ;
- *
- * declaration → varDecl
- *             | statement;
- *
- * block     → "{" declaration* "}" ;
- *
- * varDecl → "var" IDENTIFIER ( "=" expression )? ";" ;
- *
- * statement → exprStmt
- *           | ifStmt
- *           | printStmt
- *           | block;
- *
- * exprStmt  → expression ";" ;
- * printStmt → "print" expression ";" ;
- * ifStmt -> "if" "(" expression ")" statement ("else" statement)? ;
- *
- * expression → assignment ;
- * assignment → IDENTIFIER "=" assignment
- *             | logic_or ;
- * logic_or -> logic_and ( "or" logic_and )* ;
- * logic_and -> equality ( "and" equality )* ;
- * equality       → comparison ( ( "!=" | "==" ) comparison )* ;
- * comparison     → addition ( ( ">" | ">=" | "<" | "<=" ) addition )* ;
- * addition       → multiplication ( ( "-" | "+" ) multiplication )* ;
- * multiplication → unary ( ( "/" | "*" ) unary )* ;
- * unary           → ( "!" | "-" ) unary
- *                  | call ;
- * call            → primary ( "(" arguments? ")" )* ;
- *
- * arguments → expression ( "," expression )* ;
- * primary        → NUMBER | STRING | "false" | "true" | "nil"
- *                  | "(" expression ")"
- *                  | IDENTIFIER ;
- * </pre>
  */
 class Parser {
 
@@ -90,6 +51,9 @@ class Parser {
    */
   private Stmt declaration() {
     try {
+      if(match(CLASS)) {
+        return classDeclaration();
+      }
       if (match(VAR)) {
         return varDeclaration();
       }
@@ -127,6 +91,19 @@ class Parser {
     consume(LEFT_BRACE, "Expect '{' before " + kind + " body.");
     List<Stmt> body = block();
     return new Expr.Function(parameters, body);
+  }
+
+  private Stmt classDeclaration() {
+    Token name = consume(IDENTIFIER, "Expect class name.");
+    consume(LEFT_BRACE, "Expect '{' before class body.");
+
+    List<Stmt.Function> methods = new ArrayList<>();
+    while(!check(RIGHT_BRACE) && !isAtEnd()) {
+      methods.add(function("method"));
+    }
+    consume(RIGHT_BRACE, "Expect '}' after class body.");
+
+    return new Stmt.Class(name, methods);
   }
 
   private Stmt varDeclaration() {
