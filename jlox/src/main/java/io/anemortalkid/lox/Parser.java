@@ -6,10 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-/**
- * Tokens -> Syntax Tree
- *
- */
+/** Tokens -> Syntax Tree */
 class Parser {
 
   private int loopDepth;
@@ -51,7 +48,7 @@ class Parser {
    */
   private Stmt declaration() {
     try {
-      if(match(CLASS)) {
+      if (match(CLASS)) {
         return classDeclaration();
       }
       if (match(VAR)) {
@@ -98,7 +95,7 @@ class Parser {
     consume(LEFT_BRACE, "Expect '{' before class body.");
 
     List<Stmt.Function> methods = new ArrayList<>();
-    while(!check(RIGHT_BRACE) && !isAtEnd()) {
+    while (!check(RIGHT_BRACE) && !isAtEnd()) {
       methods.add(function("method"));
     }
     consume(RIGHT_BRACE, "Expect '}' after class body.");
@@ -438,10 +435,9 @@ class Parser {
       if (match(LEFT_PAREN)) {
         expr = finishCall(expr);
       } else if (match(DOT)) {
-          Token name = consume(IDENTIFIER, "Expect property name after '.'.");
-//          expr = new Expr.Get(expr, name);
-      }else
-       {
+        Token name = consume(IDENTIFIER, "Expect property name after '.'.");
+        //          expr = new Expr.Get(expr, name);
+      } else {
         break;
       }
     }
