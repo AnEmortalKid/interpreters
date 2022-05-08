@@ -1,3 +1,12 @@
-class Bagel {}
-var bagel = Bagel();
-print bagel; // Prints "Bagel instance".
+class Cake {
+  init(adjective) {
+    this.adjective = adjective;
+  }
+  taste() {
+    print "The " + this.flavor + " cake is " + this.adjective + "!";
+  }
+}
+
+var cake = Cake("scrumptious");
+cake.flavor = "German chocolate";
+cake.taste(); // Prints "The German chocolate cake is scrumptious!".

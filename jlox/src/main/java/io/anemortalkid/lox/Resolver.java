@@ -16,7 +16,9 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
   private enum FunctionType {
     NONE,
-    FUNCTION;
+    FUNCTION,
+    INITIALIZER,
+    METHOD;
   }
 
   @Override
@@ -42,11 +44,6 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
       resolve(argument);
     }
 
-    return null;
-  }
-
-  @Override
-  public Void visitFunctionExpr(Expr.Function expr) {
     return null;
   }
 
@@ -77,9 +74,22 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   }
 
   @Override
+  public Void visitSetExpr(Expr.Set expr) {
+    resolve(expr.value);
+    resolve(expr.object);
+    return null;
+  }
+
+  @Override
   public Void visitUnaryExpr(Expr.Unary expr) {
     resolve(expr.right);
 
+    return null;
+  }
+
+  @Override
+  public Void visitThisExpr(Expr.This expr) {
+    resolveLocal(expr, expr.keyword);
     return null;
   }
 
@@ -106,6 +116,19 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   public Void visitClassStmt(Stmt.Class stmt) {
     declare(stmt.name);
     define(stmt.name);
+
+    beginScope();
+    scopes.peek().put("this", true);
+
+    for (Stmt.Function method : stmt.methods) {
+      FunctionType declaration = FunctionType.METHOD;
+      if (method.name.lexeme.equals("init")) {
+        declaration = FunctionType.INITIALIZER;
+      }
+      resolveFunction(method, declaration);
+    }
+
+    endScope();
     return null;
   }
 
@@ -152,6 +175,10 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     }
 
     if (stmt.value != null) {
+      if (currentFunction == FunctionType.INITIALIZER) {
+        Lox.error(stmt.keyword, "Can't return a value from an initializer.");
+      }
+
       resolve(stmt.value);
     }
 
@@ -227,16 +254,16 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     }
   }
 
-  private void resolveFunction(Stmt.Function functionStmt, FunctionType type) {
+  private void resolveFunction(Stmt.Function function, FunctionType type) {
     FunctionType enclosingFunction = currentFunction;
     currentFunction = type;
 
     beginScope();
-    for (Token param : functionStmt.function.parameters) {
+    for (Token param : function.params) {
       declare(param);
       define(param);
     }
-    resolve(functionStmt.function.body);
+    resolve(function.body);
     endScope();
     currentFunction = enclosingFunction;
   }

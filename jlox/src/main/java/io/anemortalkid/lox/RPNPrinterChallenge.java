@@ -22,7 +22,7 @@ public class RPNPrinterChallenge implements Expr.Visitor<String> {
   }
 
   @Override
-  public String visitFunctionExpr(Expr.Function expr) {
+  public String visitGetExpr(Expr.Get expr) {
     return null;
   }
 
@@ -40,6 +40,16 @@ public class RPNPrinterChallenge implements Expr.Visitor<String> {
   public String visitLiteralExpr(Expr.Literal expr) {
     if (expr.value == null) return "nil";
     return expr.value.toString();
+  }
+
+  @Override
+  public String visitSetExpr(Expr.Set expr) {
+    return null;
+  }
+
+  @Override
+  public String visitThisExpr(Expr.This expr) {
+    return null;
   }
 
   @Override

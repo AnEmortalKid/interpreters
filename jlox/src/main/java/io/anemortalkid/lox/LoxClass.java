@@ -1,12 +1,15 @@
 package io.anemortalkid.lox;
 
 import java.util.List;
+import java.util.Map;
 
 class LoxClass implements LoxCallable {
   final String name;
+  private Map<String, LoxFunction> methods;
 
-  LoxClass(String name) {
+  LoxClass(String name, Map<String, LoxFunction> methods) {
     this.name = name;
+    this.methods = methods;
   }
 
   @Override
@@ -17,11 +20,25 @@ class LoxClass implements LoxCallable {
   @Override
   public Object call(Interpreter interpreter, List<Object> arguments) {
     LoxInstance instance = new LoxInstance(this);
+
+    LoxFunction initializer = findMethod("init");
+    if (initializer != null) {
+      initializer.bind(instance).call(interpreter, arguments);
+    }
     return instance;
   }
 
   @Override
   public int arity() {
-    return 0;
+    LoxFunction initializer = findMethod("init");
+    return initializer == null ? 0 : initializer.arity();
+  }
+
+  LoxFunction findMethod(String name) {
+    if (methods.containsKey(name)) {
+      return methods.get(name);
+    }
+
+    return null;
   }
 }
