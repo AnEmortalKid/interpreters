@@ -8,7 +8,7 @@ declaration → classDecl
             
 block     → "{" declaration* "}" ;
 
-classDecl -> "class" IDENTIFIER "{" function* "}";
+classDecl -> "class" IDENTIFIER ("<" IDENTIFIER)? "{" function* "}";
 
 varDecl → "var" IDENTIFIER ( "=" expression )? ";" ;
 
@@ -63,5 +63,6 @@ arguments → expression ( "," expression )* ;
 
 primary        → NUMBER | STRING | "false" | "true" | "nil"
                  | "(" expression ")"
-                 | IDENTIFIER ;
+                 | IDENTIFIER 
+                 | "super" "." identifier;
 ```

@@ -6,7 +6,7 @@ import java.util.Map;
 /** State, symbol table */
 public class Environment {
 
-  private Environment enclosing;
+  Environment enclosing;
 
   Environment() {
     this(null);

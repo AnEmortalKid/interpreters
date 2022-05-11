@@ -1,5 +1,6 @@
 package io.anemortalkid.lox;
 
+
 import static io.anemortalkid.lox.TokenType.*;
 
 import java.util.ArrayList;
@@ -90,15 +91,21 @@ class Parser {
 
   private Stmt classDeclaration() {
     Token name = consume(IDENTIFIER, "Expect class name.");
-    consume(LEFT_BRACE, "Expect '{' before class body.");
 
+    Expr.Variable superclass = null;
+    if (match(LESS)) {
+      consume(IDENTIFIER, "Expect superclass name.");
+      superclass = new Expr.Variable((previous()));
+    }
+
+    consume(LEFT_BRACE, "Expect '{' before class body.");
     List<Stmt.Function> methods = new ArrayList<>();
     while (!check(RIGHT_BRACE) && !isAtEnd()) {
       methods.add(function("method"));
     }
     consume(RIGHT_BRACE, "Expect '}' after class body.");
 
-    return new Stmt.Class(name, methods);
+    return new Stmt.Class(name, superclass, methods);
   }
 
   private Stmt varDeclaration() {
@@ -491,6 +498,14 @@ class Parser {
 
     if (match(IDENTIFIER)) {
       return new Expr.Variable(previous());
+    }
+
+    if (match(SUPER)) {
+      Token token = previous();
+      consume(DOT, "Expected '.' after 'super'.");
+      consume(IDENTIFIER, "Expect superclass method name.");
+      Token method = previous();
+      return new Expr.Super(token, method);
     }
 
     throw error(peek(), "Expect expression.");
